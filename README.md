@@ -1,0 +1,1 @@
+# sgss-n8n-setup
