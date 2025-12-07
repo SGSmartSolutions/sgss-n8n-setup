@@ -5,7 +5,7 @@ services:
     build: ./config-ui
     container_name: n8n-config-ui
     ports:
-      - "8080:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - PROJECT_PATH=/project
     volumes:
