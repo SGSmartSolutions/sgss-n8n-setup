@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>n8n Installer – Konfiguration</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 40px 10px;
+    }
+    .card {
+      background: #020617;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.7);
+      border: 1px solid #1f2937;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+    label {
+      display: block;
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #e5e7eb;
+    }
+    input {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #4b5563;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5);
+    }
+    .field-help {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .row input {
+      flex: 1;
+    }
+    button {
+      margin-top: 18px;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .small-btn {
+      width: auto;
+      padding: 8px 10px;
+      font-size: 0.75rem;
+      border-radius: 999px;
+      background: #1f2937;
+      border: 1px solid #4b5563;
+    }
+    .small-btn:hover {
+      background: #111827;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>n8n Installer – Konfiguration</h1>
+    <p>Trage hier deine Domain und Zugangsdaten ein. Danach erhältst du den Installationsbefehl für deinen Server.</p>
+
+    <form method="POST" action="/configure">
+      <label for="domain">Domain (für n8n)</label>
+      <input type="text" id="domain" name="domain" placeholder="z.B. n8n.deinedomain.de" required />
+      <div class="field-help">A-Record deiner Domain muss auf die Server-IP zeigen.</div>
+
+      <label for="letsencrypt_email">Let's-Encrypt-E-Mail</label>
+      <input type="email" id="letsencrypt_email" name="letsencrypt_email" placeholder="you@example.com" required />
+      <div class="field-help">Wird für SSL-Zertifikate verwendet (Let's Encrypt).</div>
+
+      <label for="basic_auth_user">Admin-Benutzername (Basic Auth)</label>
+      <input type="text" id="basic_auth_user" name="basic_auth_user" value="admin" required />
+
+      <label for="basic_auth_password">Admin-Passwort (Basic Auth)</label>
+      <div class="row">
+        <input type="text" id="basic_auth_password" name="basic_auth_password" required />
+        <button type="button" class="small-btn" onclick="generatePassword('basic_auth_password', 16)">Passwort generieren</button>
+      </div>
+      <div class="field-help">Wird abgefragt, bevor du n8n im Browser aufrufst.</div>
+
+      <label for="n8n_encryption_key">n8n Encryption Key</label>
+      <div class="row">
+        <input type="text" id="n8n_encryption_key" name="n8n_encryption_key" required />
+        <button type="button" class="small-btn" onclick="generatePassword('n8n_encryption_key', 32)">Key generieren</button>
+      </div>
+      <div class="field-help">Mindestens 32 Zeichen. Wird für Verschlüsselung sensibler Daten in n8n verwendet.</div>
+
+      <button type="submit">Speichern &amp; Installationsbefehl anzeigen</button>
+    </form>
+  </div>
+
+  <script>
+    function generatePassword(inputId, length) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      document.getElementById(inputId).value = result;
+    }
+  </script>
+</body>
+</html>

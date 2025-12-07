@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  config-ui:
+    build: ./config-ui
+    container_name: n8n-config-ui
+    ports:
+      - "8080:3000"
+    environment:
+      - PROJECT_PATH=/project
+    volumes:
+      - ./:/project
+    restart: unless-stopped
