@@ -31,13 +31,12 @@ app.post('/generate-env', (req, res) => {
 
   const envPath = path.join(PROJECT_PATH, '.env');
 
-  const envContent = [
-    `DOMAIN=${domain}`,
-    `LETSENCRYPT_EMAIL=${letsencrypt_email}`,
-    `BASIC_AUTH_USER=${basic_auth_user}`,
-    `BASIC_AUTH_PASSWORD=${basic_auth_password}`,
-    `N8N_ENCRYPTION_KEY=${n8n_encryption_key}`
-  ].join('\\n') + '\n';
+  const envContent = `DOMAIN=${domain}
+  LETSENCRYPT_EMAIL=${letsencrypt_email}
+  BASIC_AUTH_USER=${basic_auth_user}
+  BASIC_AUTH_PASSWORD=${basic_auth_password}
+  N8N_ENCRYPTION_KEY=${n8n_encryption_key}
+  `;
 
   try {
     fs.writeFileSync(envPath, envContent, { encoding: 'utf8' });
