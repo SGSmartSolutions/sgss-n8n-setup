@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.post('/configure', (req, res) => {
+app.post('/generate-env', (req, res) => {
   const {
     domain,
     letsencrypt_email,
