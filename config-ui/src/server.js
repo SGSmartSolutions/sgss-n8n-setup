@@ -37,7 +37,7 @@ app.post('/configure', (req, res) => {
     `BASIC_AUTH_USER=${basic_auth_user}`,
     `BASIC_AUTH_PASSWORD=${basic_auth_password}`,
     `N8N_ENCRYPTION_KEY=${n8n_encryption_key}`
-  ].join('\\n') + '\\n';
+  ].join('\\n') + '\n';
 
   try {
     fs.writeFileSync(envPath, envContent, { encoding: 'utf8' });
