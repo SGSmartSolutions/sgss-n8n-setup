@@ -93,7 +93,7 @@ Wichtig: Die IP im Ping sollte die Hetzner-IP deines Servers sein.
 Auf dem Server:
 
 ```bash
-git clone https://github.com/YOUR-GITHUB-USER/sgss-n8n-setup.git
+git clone https://github.com/SGSmartSolutions/sgss-n8n-setup.git
 cd sgss-n8n-setup
 ```
 
