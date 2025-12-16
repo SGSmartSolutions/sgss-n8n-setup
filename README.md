@@ -1,14 +1,5 @@
 # sgss-n8n-setup – n8n Hetzner Docker Installer
 
-> ⚠️ **Hinweis / Disclaimer**
->
-> Dieses Setup-Skript wurde mehrfach getestet und funktioniert in typischen Umgebungen (z. B. frisches Ubuntu auf einem Hetzner-Server mit Docker).
-> Trotzdem erfolgt die Nutzung **auf eigene Gefahr**:
-> - Es werden Änderungen am Server (Docker, Firewall, Reverse-Proxy) vorgenommen.
-> - Du bist selbst dafür verantwortlich, Backups zu erstellen und die Konfiguration an deine Umgebung anzupassen.
->
-> Der Autor übernimmt keine Haftung für Datenverluste, Ausfälle oder Schäden, die durch die Nutzung dieses Repositories entstehen.
-
 Dieses Repository richtet auf einem Hetzner-Server per Docker ein produktives n8n mit HTTPS ein.
 
 Es enthält:
@@ -93,7 +84,7 @@ Wichtig: Die IP im Ping sollte die Hetzner-IP deines Servers sein.
 Auf dem Server:
 
 ```bash
-git clone https://github.com/SGSmartSolutions/sgss-n8n-setup.git
+git clone https://github.com/YOUR-GITHUB-USER/sgss-n8n-setup.git
 cd sgss-n8n-setup
 ```
 
