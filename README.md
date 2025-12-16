@@ -1,5 +1,14 @@
 # sgss-n8n-setup – n8n Hetzner Docker Installer
 
+> ⚠️ **Hinweis / Disclaimer**
+>
+> Dieses Setup-Skript wurde mehrfach getestet und funktioniert in typischen Umgebungen (z. B. frisches Ubuntu auf einem Hetzner-Server mit Docker).
+> Trotzdem erfolgt die Nutzung **auf eigene Gefahr**:
+> - Es werden Änderungen am Server (Docker, Firewall, Reverse-Proxy) vorgenommen.
+> - Du bist selbst dafür verantwortlich, Backups zu erstellen und die Konfiguration an deine Umgebung anzupassen.
+>
+> Der Autor übernimmt keine Haftung für Datenverluste, Ausfälle oder Schäden, die durch die Nutzung dieses Repositories entstehen.
+
 Dieses Repository richtet auf einem Hetzner-Server per Docker ein produktives n8n mit HTTPS ein.
 
 Es enthält:
@@ -13,14 +22,18 @@ Es enthält:
 
 ## Voraussetzungen
 
-- Hetzner-Server (z. B. Ubuntu 22.04)
+- Hetzner-Server (z. B. Ubuntu 22.04, frisch installiert)
 - Domain, die per DNS auf die Server-IP zeigt (A-Record, siehe unten)
-- SSH-Zugang zum Server (idealerweise per SSH-Key, kein Passwort-Login)
-- Docker + Docker Compose Plugin installiert
+- Lokaler Rechner (Mac / Linux / Windows mit SSH-Client)
+- Grundkenntnisse im Umgang mit SSH und Terminal
+
+**Wichtiger Grundsatz:**  
+- Basis-Setup (System-Updates + Docker-Installation + User-Anlage) erfolgt **als `root`**.  
+- Alle weiteren Schritte (Repo klonen, n8n installieren, GUI nutzen) erfolgen mit einem **normalen User mit `sudo`- und `docker`-Rechten** (z. B. `admin`).
 
 ---
 
-## 1. SSH-Key (lokaler Rechner)
+## 0. SSH-Key auf deinem lokalen Rechner erstellen
 
 Auf deinem lokalen Rechner (Mac / Linux):
 
@@ -29,7 +42,9 @@ ssh-keygen -t ed25519 -C "deine-mail@example.com"
 ```
 
 - Fragen einfach mit Enter bestätigen, falls du keinen speziellen Pfad willst  
-- Standardpfad: `~/.ssh/id_ed25519` (privater Key), `~/.ssh/id_ed25519.pub` (öffentlicher Key)
+- Standardpfad:  
+  - privater Key: `~/.ssh/id_ed25519`  
+  - öffentlicher Key: `~/.ssh/id_ed25519.pub`
 
 Public Key anzeigen:
 
@@ -37,24 +52,124 @@ Public Key anzeigen:
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Den kompletten Inhalt kopieren und:
+Diesen **öffentlichen** Schlüssel brauchst du gleich, um ihn auf dem Server zu hinterlegen.
 
-- entweder in der Hetzner Cloud beim Server unter **„SSH Keys“** hinterlegen  
-- oder auf dem Server in `/home/DEINUSER/.ssh/authorized_keys` eintragen
+---
 
-Login zum Server:
+## 1. Server-Grundsetup als root
+
+### 1.1 Als root einloggen
+
+Initial (oder über Hetzner-Konsole):
+
+```bash
+ssh root@SERVER_IP
+```
+
+`SERVER_IP` = öffentliche IP deines Hetzner-Servers.
+
+### 1.2 System aktualisieren
+
+```bash
+apt update
+apt upgrade -y
+```
+
+### 1.3 Docker & Docker Compose Plugin installieren (als root)
+
+```bash
+apt install -y ca-certificates curl gnupg git ufw
+
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg   | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"   > /etc/apt/sources.list.d/docker.list
+
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+---
+
+## 2. Neuen User anlegen und Rechte vergeben (als root)
+
+In den folgenden Beispielen heißt der User `admin`. Du kannst auch einen anderen Namen wählen.
+
+### 2.1 User anlegen
+
+```bash
+adduser admin
+```
+
+Passwort vergeben und die Fragen beantworten (oder mit Enter überspringen).
+
+### 2.2 User zu `sudo`-Gruppe hinzufügen
+
+```bash
+usermod -aG sudo admin
+```
+
+### 2.3 User zu `docker`-Gruppe hinzufügen
+
+```bash
+usermod -aG docker admin
+```
+
+Dadurch kann der User später Docker-Befehle ohne `sudo` ausführen.
+
+### 2.4 SSH-Key für den neuen User hinterlegen
+
+**Variante A – du hast bereits einen SSH-Key lokal (empfohlen):**
+
+1. Als root auf dem Server:
+
+   ```bash
+   su - admin
+   mkdir -p ~/.ssh
+   chmod 700 ~/.ssh
+   nano ~/.ssh/authorized_keys
+   ```
+
+2. In `authorized_keys` den **öffentlichen Key** von deinem lokalen Rechner einfügen  
+   (Inhalt von `~/.ssh/id_ed25519.pub`), speichern:
+
+   - `Strg + O`, Enter  
+   - `Strg + X`
+
+3. Rechte setzen:
+
+   ```bash
+   chmod 600 ~/.ssh/authorized_keys
+   ```
+
+**Variante B – vorhandene Keys von root übernehmen**  
+(wenn du dich bereits mit Key bei `root` einloggst):
+
+```bash
+mkdir -p /home/admin/.ssh
+cp /root/.ssh/authorized_keys /home/admin/.ssh/
+chown -R admin:admin /home/admin/.ssh
+chmod 700 /home/admin/.ssh
+chmod 600 /home/admin/.ssh/authorized_keys
+```
+
+---
+
+## 3. Mit dem neuen User einloggen (ab jetzt kein root mehr)
+
+Auf deinem lokalen Rechner:
 
 ```bash
 ssh admin@SERVER_IP
 ```
 
-`SERVER_IP` = öffentliche IP deines Hetzner-Servers.
+Ab jetzt werden **alle weiteren Schritte** mit diesem User ausgeführt (nicht mehr als root).
 
 ---
 
-## 2. DNS-Eintrag (Domain → Server-IP)
+## 4. DNS-Eintrag (Domain → Server-IP)
 
-In deiner `.env` wird später z. B. stehen:
+In deiner späteren `.env` wird z. B. stehen:
 
 ```env
 DOMAIN=n8n.example.com
@@ -79,11 +194,12 @@ Wichtig: Die IP im Ping sollte die Hetzner-IP deines Servers sein.
 
 ---
 
-## 3. Repository klonen
+## 5. Repository klonen (mit dem neuen User)
 
-Auf dem Server:
+Auf dem Server (als `admin` o. Ä.):
 
 ```bash
+cd ~
 git clone https://github.com/YOUR-GITHUB-USER/sgss-n8n-setup.git
 cd sgss-n8n-setup
 ```
@@ -92,43 +208,18 @@ cd sgss-n8n-setup
 
 ---
 
-## 4. Docker & Docker Compose installieren (Beispiel Ubuntu)
-
-```bash
-sudo apt update
-sudo apt install -y ca-certificates curl gnupg
-
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-```
-
-Optional: Docker ohne `sudo` nutzen:
-
-```bash
-sudo usermod -aG docker admin
-# danach neu einloggen:
-# exit
-# ssh admin@SERVER_IP
-```
-
----
-
-## 5. Firewall setzen (empfohlen)
+## 6. Firewall setzen (empfohlen, mit sudo)
 
 Damit dein Server geschützt ist und n8n + Caddy erreichbar sind, sollte mindestens freigegeben sein:
 
-- `22/tcp` – SSH
-- `80/tcp` – HTTP (für Let's Encrypt / Caddy)
+- `22/tcp` – SSH  
+- `80/tcp` – HTTP (für Let's Encrypt / Caddy)  
 - `443/tcp` – HTTPS (für n8n hinter Caddy)
 
 Dieses Repo bringt dafür ein Script mit:
 
 ```bash
-cd sgss-n8n-setup
+cd ~/sgss-n8n-setup
 sudo bash scripts/setup-firewall.sh
 ```
 
@@ -139,11 +230,11 @@ Das Script:
 - erlaubt `OpenSSH`, `80/tcp`, `443/tcp`
 - aktiviert `ufw`
 
-> **Hinweis:** Firewall-Regeln können nicht automatisch nur durch Klonen des Repos gesetzt werden – das Script muss bewusst einmal ausgeführt werden.
+> Hinweis: Firewall-Regeln können nicht automatisch nur durch Klonen des Repos gesetzt werden – das Script muss bewusst einmal ausgeführt werden.
 
 ---
 
-## 6. Config-GUI sicher starten (nur lokal auf dem Server)
+## 7. Config-GUI sicher starten (nur lokal auf dem Server erreichbar)
 
 In `docker-compose.setup.yml` ist das Port-Mapping so gesetzt, dass die GUI nur auf `localhost` des Servers lauscht:
 
@@ -154,16 +245,16 @@ ports:
 
 Dadurch ist die GUI **nicht direkt aus dem Internet erreichbar**.
 
-Auf dem Server:
+Auf dem Server (als `admin`):
 
 ```bash
-cd sgss-n8n-setup
+cd ~/sgss-n8n-setup
 docker compose -f docker-compose.setup.yml up -d
 ```
 
 ---
 
-## 7. SSH-Tunnel vom lokalen Rechner zur Config-GUI
+## 8. SSH-Tunnel vom lokalen Rechner zur Config-GUI
 
 Auf deinem **lokalen Rechner**:
 
@@ -182,7 +273,7 @@ Der gesamte Traffic zur GUI läuft verschlüsselt über SSH.
 
 ---
 
-## 8. In der GUI konfigurieren
+## 9. In der GUI konfigurieren
 
 Im Browser auf deinem lokalen Rechner:
 
@@ -209,12 +300,12 @@ N8N_ENCRYPTION_KEY=DEIN_LANGER_ENCRYPTION_KEY
 
 ---
 
-## 9. n8n + HTTPS starten
+## 10. n8n + HTTPS starten
 
-Zurück auf dem Server (im Projektordner):
+Zurück auf dem Server (als `admin`, im Projektordner):
 
 ```bash
-cd sgss-n8n-setup
+cd ~/sgss-n8n-setup
 docker compose -f docker-compose.prod.yml up -d
 ```
 
@@ -235,14 +326,16 @@ Login (Basic Auth):
 - Benutzer: wie in der GUI angegeben (`BASIC_AUTH_USER`)
 - Passwort: wie in der GUI angezeigt (`BASIC_AUTH_PASSWORD`)
 
+Danach folgt das n8n-eigene Setup (Owner-User erstellen).
+
 ---
 
-## 10. Config-GUI wieder stoppen (empfohlen)
+## 11. Config-GUI wieder stoppen (empfohlen)
 
-Wenn du die GUI nicht mehr brauchst, kannst du sie stoppen:
+Wenn du die GUI не mehr brauchst, kannst du sie stoppen:
 
 ```bash
-cd sgss-n8n-setup
+cd ~/sgss-n8n-setup
 docker compose -f docker-compose.setup.yml down
 ```
 
@@ -268,10 +361,10 @@ Dein produktives Setup (`docker-compose.prod.yml`) bleibt davon unberührt.
   Caddy-Konfiguration (Reverse Proxy auf n8n, Domain und E-Mail aus `.env`).
 
 - `.env.example`  
-  Beispiel-Env – wird **nicht** verwendet, die echte `.env` kommt aus der GUI.
+  Beispiel-Env – wird nicht verwendet, die echte `.env` kommt aus der GUI.
 
 - `.env`  
-  Wird von der Config-GUI erzeugt. **Nicht committen** (steht in `.gitignore`).
+  Wird von der Config-GUI erzeugt. Nicht committen (steht in `.gitignore`).
 
 - `.gitignore`  
   Ignoriert u. a. `node_modules/` und `.env`.
